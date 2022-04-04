@@ -1,0 +1,24 @@
+In the middle of compiling the grammar.
+
+- symbol canon
+  - want to canonicalize the constructor string
+  - and also the symbol pointer?
+
+- remove unused mrd terms like 'or'
+
+- and what about unary ops?
+
+- is {} an empty array, or an empty map?
+  - polymorphic!
+
+- self-hosting grammar
+  + write good grammar
+  + parse all of it
+  - make it nicer
+    - 'macro' for *-lists and +-lists
+    - 'macro' for joins, e.g. exp , exp , exp
+  - use it to parse
+
+- maybe
+  - memoization of string construction?
+  - should hash modify its own table size?

@@ -1,0 +1,270 @@
+#if 0
+
+static int show=0;
+
+static int loop_count=0, hit_count=0, miss_count=0;
+static int reporting = 0;
+
+static void init_counters()
+{
+  loop_count = hit_count = miss_count = 0;
+}
+
+static void report_counters()
+{
+  if (reporting) {
+    printf( "MRD stats:\n" );
+    printf( "  %6s: %8d\n", "loop", loop_count );
+    printf( "  %6s: %8d\n", "hit", hit_count );
+    printf( "  %6s: %8d\n", "miss", miss_count );
+    printf( "  %6s: %8d\n", "*total", loop_count+hit_count+miss_count );
+  }
+}
+
+dexp mrd_parse1_memoized( dexp grammar, dexp memos, dexp target,
+  dexp input, int pos, bool coind, int depth );
+
+dexp mrd_parse_seq( dexp grammar, dexp memos, dexp list, dexp input, int pos,
+  bool coind, int depth )
+{
+  CASE (list) {
+    match (Nil) {
+      return K(Ok,Nil,I(pos));
+    } else match (K(Cons,_(a),_(d))) {
+      CASE (mrd_parse1_memoized( grammar, memos, V(a), input, pos,
+              coind, depth )) {
+        match (K(Ok,_(ra),_(newpos))) {
+          CASE (mrd_parse_seq( grammar, memos, V(d), input, gI(V(newpos)),
+                  coind, depth )) {
+            match (K(Ok,_(rd),_(newnewpos))) {
+              return K(Ok,CONS(V(ra),V(rd)),V(newnewpos));
+            } else match (K(Bad,Nil)) {
+              return K(Bad,Nil);
+            }
+          } ENDCASE;
+        } else match (K(Bad,_(why))) {
+          return K(Bad,V(why));
+        }
+      } ENDCASE;
+    }
+  } ENDCASE;
+  A(0);
+  return Nil;
+}
+
+// Returns: Ok(tree,newpos) | Bad
+dexp mrd_parse1( dexp grammar, dexp memos, dexp target, dexp input, int pos,
+  bool coind, int depth )
+{
+  CASE (target) {
+    match (K(NT,_(nt))) {
+      dexp nterm = gM( grammar, V(nt) );
+      if (!nterm) {
+        err(( "No such terminal: %s\n", SYMSTRING(V(nt)) ));
+      }
+      return mrd_parse1_memoized( grammar, memos, nterm, input, pos,
+        coind, depth );
+    } else match (K(Or,_(a),_(b))) {
+      dexp aresult = mrd_parse1_memoized( grammar, memos, V(a), input, pos,
+        coind, depth );
+      CASE (aresult) {
+        match (K(Ok,_(tree),_(newpos))) {
+          return aresult;
+        } else match (K(Bad,_(why))) {
+          return mrd_parse1_memoized( grammar, memos, V(b), input, pos,
+            coind, depth );
+        }
+      } ENDCASE;
+    } else match (K(Seq,_(ct),_(steps))) {
+      CASE (mrd_parse_seq( grammar, memos, V(steps), input, pos,
+              coind, depth )) {
+        match (K(Bad,_(why))) {
+          return K(Bad,V(why));
+        } else match (K(Ok,_(list),_(newpos))) {
+          return K(Ok,list2ctor( V(ct), V(list) ),V(newpos));
+        }
+      } ENDCASE;
+    } else match (S(Dot)) {
+      if (ARRAYINXOK(input,pos)) {
+        dexp c = gA(input,pos);
+        return K(Ok,c,I(pos+1));
+      } else {
+        return K(Bad,Nil);
+      }
+    } else match (K(String,_(s))) {
+      char *s = gST(V(s));
+      int i, len;
+      A(s);
+      len = strlen(s);
+      for (i=0; i<len; ++i) {
+        if (!(ARRAYINXOK(input,pos+i) && gC(gA(input,pos+i))==s[i])) {
+          return K(Bad,Nil);
+        }
+      }
+      return K(Ok,K(String,V(s)),I(pos+len));
+    } else match (K((..),_(c0),_(c1))) {
+      char cc0 = gC(V(c0));
+      char cc1 = gC(V(c1));
+      char lower = cc0<cc1 ? cc0 : cc1;
+      char higher = cc0<cc1 ? cc1 : cc0;
+      char target;
+
+      if (!ARRAYINXOK(input,pos)) {
+        return K(Bad,Nil);
+      }
+
+      target = gC(gA(input,pos));
+
+      if (lower<=target && target<=higher) {
+        return K(Ok,K(Char,mkchar(target)),I(pos+1));
+      } else {
+        return K(Bad,Nil);
+      }
+    } else match (K(Nothing,_(ct))) {
+      return K(Ok,V(ct),I(pos));
+    }
+  } ENDCASE;
+
+  return K(Bad,Nil);
+}
+
+dexp mrd_parse1_memoized( dexp grammar, dexp memos, dexp target,
+  dexp input, int pos, bool coind, int depth )
+{
+  static int serial=0;
+  int ser = serial++;
+  dexp key, value;
+  key = L(target,I(pos),I(depth));
+
+  value = gM(memos,key);
+
+  if (value) {
+
+    CASE (value) {
+      match (S(Started)) {
+        loop_count++;
+        if (depth>0) {
+          return mrd_parse1_memoized( grammar, memos, target,
+            input, pos, coind, depth-1 );
+        } else {
+          // Already trying this, don't try it or we'll loop.
+          return K(Bad,S(Started));
+        }
+      } else match (K(Done,_(answer))) {
+        hit_count++;
+        // Already ran this, return the answer.
+        return V(answer);
+      }
+    } ENDCASE;
+
+  } else {
+    dexp answer;
+
+    miss_count++;
+    // Haven't tried it, let's try it.
+
+    // Put stub in table
+    pM(memos,key,S(Started));
+
+    // Do the work
+    {
+      if (show) {
+        ospew_title_start();
+        printf( "At " );
+        io_write_charlist( stdout, input, pos, ARRAYSIZE(input) );
+        printf( " %d -- ", ser );
+        dspew( target );
+//        printf( "\n" );
+        ospew_title_end();
+      }
+
+      answer = mrd_parse1( grammar, memos, target, input, pos, coind, depth );
+
+      if (show) {
+        ospew_title_start();
+        printf( "Answer %d ", ser );
+        ospew_title_end();
+        dspew( answer );
+        ospew_end();
+        ospew_end();
+      }
+    }
+
+    // Put answer in table
+    pM(memos,key,K(Done,answer));
+
+    if (coind) {
+      int d_depth = depth+1;
+
+      while (1) {
+        int worked = 0;
+
+        CASE (answer) {
+          match (K(Ok,_(tree),_(pos))) {
+            dexp deeper = mrd_parse1_memoized( grammar, memos, target,
+              input, pos, 0, d_depth );
+            CASE (deeper) {
+              match (K(Ok,_(d_tree),_(d_pos))) {
+                if (gI(V(d_pos)) > gI(V(pos))) {
+                  answer = deeper;
+                  worked = 1;
+                } else {
+                }
+              } ornot;
+            } ENDCASE;
+          } ornot;
+        } ENDCASE;
+
+        if (!worked) {
+          break;
+        }
+
+        d_depth++;
+      }
+    }
+
+    // Return to caller
+    return answer;
+  }
+
+  A(0);
+  return Nil;
+}
+
+#endif
+
+
+#if 0
+dexp mrd_parse( dexp grammar, dexp top, dexp input )
+{
+  dexp topprod, memos;
+
+  init_counters();
+
+  topprod = gM(grammar,top);
+  memos = EMAP();
+
+  dexp results = mrd_parse1_memoized( grammar, memos, topprod, input,
+    0, 1, 0 );
+
+  report_counters();
+
+  CASE (results) {
+    match (K(Bad,_(why))) {
+      return results;
+    } else match (K(Ok,_(tree),_(pos))) {
+      if (gI(V(pos)) != ARRAYSIZE(input)) {
+        return K(Bad,S(ShortParse));
+      } else {
+        return K(Ok,V(tree));
+      }
+    } else {
+      dspew( results );
+      err(( "??" ));
+    }
+  } ENDCASE;
+  A(0);
+  return Nil;
+}
+#endif
+

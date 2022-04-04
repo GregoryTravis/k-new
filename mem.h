@@ -1,9 +1,7 @@
-/* $Id: mem.h,v 1.2 2002/09/11 20:01:49 Administrator Exp $ */
+/* $Id: mem.h,v 1.1 2004/08/06 14:14:29 greg Exp $ */
 
 #ifndef _mem_h_
 #define _mem_h_
-
-#define MEM_USE_GC
 
 #define malik(size) (malik_actual(__FILE__,__LINE__,(size)))
 #define realik(mem,size) (realik_actual(__FILE__,__LINE__,(mem),(size)))
@@ -25,5 +23,18 @@ void *memfill( void *dest, int c, int n );
 
 char *strdoop( char *s );
 char *strkat( char *s0, char *s1 );
+
+#define MEM_NOT_ADDRESS ((void*)-1)
+extern void *mem_min_addr;
+extern void *mem_max_addr;
+#define MEM_ADD_RANGE_IS_SET() \
+  (mem_min_addr!=MEM_NOT_ADDRESS)
+#define MEM_ADDR_IN_RANGE(m)      \
+  ( (MEM_ADD_RANGE_IS_SET()) &&   \
+    ((void*)(m))>=mem_min_addr && \
+    ((void*)(m))<=mem_max_addr )
+#define AMEM_ADDR_IN_RANGE(m)      \
+  RA( MEM_ADDR_IN_RANGE((m)),   \
+      ("Address %x out of range %x..%x\n", (m), mem_min_addr, mem_max_addr) )
 
 #endif /* _mem_h_ */

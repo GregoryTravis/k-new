@@ -1,0 +1,80 @@
+dexp mrd_build_transitions( dexp transitions, dexp grammar, dexp exp )
+{
+  CASE (exp) {
+    match (K(Or,_(a),_(b))) {
+      
+    } else match (K(Seq,_(a),_(b))) {
+    }
+  } ENDCASE;
+}
+
+dexp mrd_build_transitions_g( grammar )
+{
+  dexp transitions = mkmap();
+  return mrd_build_transitions( transitions, grammar, S(top_statement) );
+}
+
+
+
+
+
+#if 0
+  dexp memos = M(0);
+#endif
+
+#if 0
+    if (memos) {
+      //spew(( "ht size %d entries %d\n", memos->v.map_v->size,
+      //       memos->v.map_v->num_entries ));
+      // Check memo table.
+      pre_state = K(a,e,I(i),y,n);
+      post_state = gM(memos,pre_state);
+      if (post_state) {
+        // Go right to post_state.
+        n_memo_hits++;
+        CASE (post_state) {
+          match (K(a,_(e),_(i),_(y),_(n))) {
+            e = V(e);
+            i = gI(V(i));
+            y = V(y);
+            n = V(n);
+          }
+        } ENDCASE;
+        continue;
+      } else {
+        n_memo_misses++;
+      }
+    }
+#endif
+
+#if 0
+    if (memos) {
+      // Store transition in memo table.
+      post_state = K(a,e,I(i),y,n);
+      pM(memos,pre_state,post_state);
+    }
+#endif
+
+
+dexp reify_ctors( dexp e )
+{
+  if (ISCONS(e)) {
+    dexp args = args2list( e );
+    args = dexp_mapfun( &reify_ctors, args );
+    return K(CTOR,CONSCTOR(e),args);
+  } else {
+    return e;
+  }
+}
+
+dexp unreify_ctors( dexp e )
+{
+  CASE (e) {
+    match (K(CTOR,_(ctor),_(args))) {
+      return list2ctor( V(ctor), dexp_mapfun( &unreify_ctors, V(args) ) );
+    } otherwise (_) {
+      return e;
+    }
+  } ENDCASE;
+  NORETURN;
+}

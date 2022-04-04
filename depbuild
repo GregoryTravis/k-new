@@ -1,0 +1,255 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+use Util;
+
+my $depends = {};
+my $includes = {};
+my @programs = ();
+my $verbose = 0;
+my $silent = 0;
+my $bindings = {};
+my $skip = {};
+my $makefile = "depbuild.mk";
+my $make_opts = "";
+
+my $cflags;
+my $ldflags;
+my $prof_flags;
+
+sub canonical( $ )
+{
+  my ($file) = @_;
+  $file =~ s/\/[^\/]*\/\.\.\//\//g;
+  $file =~ s/^[^\/]*\/\.\.\///g;
+  $file =~ s/\/\.\//\//g;
+  $file =~ s/^\.\///g;
+  return $file;
+}
+
+sub parse_args()
+{
+  foreach my $arg (@ARGV) {
+    if ($arg =~ /^-/) {
+      if ($arg eq "-v") {
+        $verbose = 1;
+      } elsif ($arg eq "-s") {
+        $silent = 1;
+      } else {
+        die "Bad option $arg\n";
+      }
+    } else {
+      push @programs, $arg;
+    }
+  }
+}
+
+sub setup_signal_handler()
+{
+  $SIG{'HUP'} = \&exit;
+  $SIG{'INT'} = \&exit;
+  $SIG{'QUIT'} = \&exit;
+  $SIG{'TERM'} = \&exit;
+}
+
+sub cmd( $ )
+{
+  my ($cmd) = @_;
+  #print "$cmd\n";
+  return system( $cmd );
+}
+
+sub clean_line( $ )
+{
+  my ($cmd) = @_;
+  $cmd =~ s/(.)\s+(.)/$1 $2/g;
+  return $cmd;
+}
+
+sub scan_file( $ )
+{
+  my ($filename) = @_;
+  my @includes = ();
+  my $dir = get_dir( $filename );
+
+  if (!-e $filename) {
+    return [];
+  }
+
+  open( FILE, $filename ) || die "$filename $!";
+
+  while (<FILE>) {
+    chomp;
+    if (/^\s*#\s*include\s+\"(\S+)\.h\"/) {
+        my $incstub = $1;
+        $incstub = "$dir/$incstub";
+        $incstub = canonical( $incstub );
+        push @includes, $incstub;
+    }
+  }
+
+  close( FILE );
+
+  return \@includes;
+}
+
+sub scan( $ )
+{
+  my ($stub) = @_;
+  my $filename = "${stub}.c";
+  my $dir = get_dir( $stub );
+  my @includes = ();
+
+  $includes->{$stub} ||= [];
+
+  push @{$includes->{$stub}}, (map { "$_" } @{ &scan_file( "${stub}.c" ) });
+  push @{$includes->{$stub}}, (map { "$_" } @{ &scan_file( "${stub}.h" ) });
+
+  print "  $stub: " . join( ' ', @{$includes->{$stub}} ) . "\n" if ($verbose);
+}
+
+sub close_includes()
+{
+  my $done = 0;
+  while (!$done) {
+    print "Closing includes...\n" if ($verbose);
+    my $changed = 0;
+    while (my ($file,$incs) = each %$includes) {
+      foreach my $inc (@$incs) {
+        if (!exists $includes->{$inc}) {
+          scan( $inc );
+          $changed = 1;
+        }
+      }
+    }
+    $done = !$changed;
+  }
+}
+
+sub remove_duplicates( @ )
+{
+  my (@list) = @_;
+  my %unique = ();
+  map { $unique{$_}=1 } @list;
+  @list = keys %unique;
+  return @list;
+}
+
+# Depends are transitive closure of includes
+sub close_depends()
+{
+  while (my ($file,$incs) = each %$includes) {
+    $depends->{$file} = [ @$incs ];
+  }
+
+  my $done = 0;
+  while (!$done) {
+    print "Closing depends...\n" if ($verbose);
+    my $changed = 0;
+    while (my ($file,$deps) = each %$depends) {
+      my @ndeps = @$deps;
+      foreach my $dep (@$deps) {
+        die "Dangle: $file $dep!" if (!exists $depends->{$dep});
+        my $addnl_deps = $depends->{$dep};
+        push @ndeps, @$addnl_deps;
+      }
+      @ndeps = remove_duplicates( @ndeps );
+      if ((scalar @ndeps) != (scalar @$deps)) {
+        $changed = 1;
+      }
+      $depends->{$file} = \@ndeps;
+    }
+    $done = !$changed;
+  }
+}
+
+sub get_dir( $ )
+{
+  my ($file) = @_;
+  if ($file =~ /(.*)\//) {
+    return $1;
+  } else {
+    return ".";
+  }
+}
+
+sub gen_makefile()
+{
+  open( MAKEFILE, ">$makefile" ) || die $!;
+
+  print MAKEFILE "all: " . join( ' ', @programs ) . "\n\n";
+
+  print MAKEFILE "include gmakefile\n";
+
+  foreach my $file (sort keys %$includes) {
+    next if (exists $skip->{$file});
+    next if (!-e "${file}.c");
+    my $dir = get_dir( $file );
+    my @incs = @{$includes->{$file}};
+#    @incs = map { "$dir/${_}" } @incs;
+    @incs = map { "${_}.h" } @incs;
+    @incs = map { canonical( $_ ) } @incs;
+    my $hs = join( ' ', @incs );
+    print MAKEFILE clean_line( "${file}.o: ${file}.c $hs\n" );
+    print MAKEFILE
+        clean_line( "\tgcc $cflags $prof_flags -o ${file}.o -c ${file}.c\n" );
+    print MAKEFILE clean_line( "\n" );
+  }
+
+  foreach my $program (@programs) {
+    my $dir = get_dir( $program );
+    my @source_files = grep { -e "${program}.c" } @{$depends->{$program}};
+#    @source_files = map { "$dir/${_}" } @source_files;
+    @source_files = map { "${_}.o" } @source_files;
+    @source_files = map { canonical( $_ ) } @source_files;
+    my $os = join( ' ', @source_files );
+    print MAKEFILE
+        clean_line( "$program: ${program}.o $os\n" );
+    print MAKEFILE clean_line( "\tgcc $ldflags ${prof_flags} " .
+                               "-o $program ${program}.o $os\n" );
+    print MAKEFILE
+        clean_line( "\n" );
+  }
+
+  close( MAKEFILE );
+}
+
+sub build()
+{
+  print "Programs...\n" if ($verbose);
+  foreach my $program (@programs) {
+    scan( "$program" );
+  }
+  close_includes();
+  close_depends();
+  gen_makefile();
+  #cmd( "cat $makefile" );
+  my $silopt = $silent ? "-s" : "";
+  return cmd( "make $make_opts $silopt -f $makefile" );
+}
+
+sub read_settings()
+{
+  $bindings = Util::load_bindings( "makefile" );
+  my $generated = [split( /\s+/, $bindings->{generated} )];
+  $generated = [ map { s/.[ch]$//; $_ } @$generated ];
+  map { $skip->{$_} = 1 } @$generated;
+
+  $cflags = $bindings->{cflags};
+  $ldflags = $bindings->{ldflags};
+  $prof_flags = $bindings->{prof_flags};
+}
+
+sub main()
+{
+  setup_signal_handler();
+  parse_args();
+  read_settings();
+  my $ret = build();
+  #unlink( $makefile );
+  return $ret;
+}
+
+my $rv = main();
+exit( $rv>>8 );

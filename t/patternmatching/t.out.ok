@@ -1,0 +1,14 @@
+Jer( Queen( Lap( 8 ), 9 ), 1.200000 )
+0
+Jer( Lap( 8 ), 9, 1.200000 )
+Jer( Queen( Lip( 8 ), 9, 20 ), 1.200000 )
+1
+Jer( 1.200000, Queen( Lip( 8 ), 9, 20 ) )
+Joe( A( 3 ), '4' )
+2
+Jer( '4', 3 )
+Vope( 1 )
+Case error:
+matchee: Vope( 1 )
+At t/patternmatching/t.c:25:
+Error: 

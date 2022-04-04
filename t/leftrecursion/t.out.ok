@@ -1,0 +1,33 @@
+Ok(
+  aye(
+    aye(
+      aye(
+        aye(
+          aye(
+            aye(
+              aye(
+                aye(
+                  aye(
+                    aye(
+                      aye( aye( end( Char( 'a' ) ), Char( 'a' ) ), Char( 'a' ) ),
+                      Char( 'a' )
+                    ),
+                    Char( 'a' )
+                  ),
+                  Char( 'a' )
+                ),
+                Char( 'a' )
+              ),
+              Char( 'a' )
+            ),
+            Char( 'a' )
+          ),
+          Char( 'a' )
+        ),
+        Char( 'a' )
+      ),
+      Char( 'a' )
+    ),
+    Char( 'a' )
+  )
+)

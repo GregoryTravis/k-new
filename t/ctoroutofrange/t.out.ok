@@ -1,0 +1,7 @@
+Joe( 'a', 'b', 'c' )
+'a'
+'b'
+'c'
+Assertion failure:
+At t/ctoroutofrange/t.c:16:
+Error: Ctor index  3 out of range 0..3

@@ -1,0 +1,66 @@
+======== hash dump =========
+at 0
+at 1
+........ hash dump .........
+======== hash dump =========
+at 0
+  [hashcode 4d4]
+    key asdf
+    value 10
+at 1
+........ hash dump .........
+======== hash dump =========
+at 0
+  [hashcode 4d4]
+    key asdf
+    value 10
+  [hashcode 97c]
+    key asdfj
+    value 12
+at 1
+at 2
+at 3
+........ hash dump .........
+10
+12
+======== hash dump =========
+at 0
+  [hashcode 4d4]
+    key asdf
+    value 100
+  [hashcode 97c]
+    key asdfj
+    value 12
+at 1
+at 2
+at 3
+........ hash dump .........
+======== hash dump =========
+at 0
+  [hashcode 4d4]
+    key asdf
+    value 100
+  [hashcode 97c]
+    key asdfj
+    value 120
+at 1
+at 2
+at 3
+........ hash dump .........
+100
+120
+======== hash dump =========
+at 0
+  [hashcode 97c]
+    key asdfj
+    value 120
+at 1
+at 2
+at 3
+........ hash dump .........
+======== hash dump =========
+at 0
+at 1
+at 2
+at 3
+........ hash dump .........

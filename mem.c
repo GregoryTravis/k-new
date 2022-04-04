@@ -1,34 +1,21 @@
-/* $Id: mem.c,v 1.2 2002/09/11 20:01:49 Administrator Exp $ */
+/* $Id: mem.c,v 1.1 2004/08/06 14:14:29 greg Exp $ */
 
 #include <stdlib.h>
 #include <string.h>
 #include "a.h"
-#include "gc.h"
 #include "mem.h"
 #include "spew.h"
 
-#ifdef MEM_USE_GC
+void *mem_min_addr=MEM_NOT_ADDRESS;
+void *mem_max_addr=MEM_NOT_ADDRESS;
+
+static int verbose = 0;
 
 void *malik_last( int size )
 {
-  return GC_malloc( size );
-}
+  void *d = malloc( size );
 
-void *realik_last( void *mem, int size )
-{
-  return GC_realloc( mem, size );
-}
-
-void fri_last( void *mem )
-{
-  /* mwahahahahahaha */
-}
-
-#else
-
-void *malik_last( int size )
-{
-  return malloc( size );
+  return d;
 }
 
 void *realik_last( void *mem, int size )
@@ -41,17 +28,27 @@ void fri_last( void *mem )
   free( mem );
 }
 
-#endif /* MEM_USE_GC */
-
 void *malik_actual( char *file, int line, int size )
 {
   void *mem;
 
   mem = malik_last( size );
 
-  spew(( smem, "malik %x size %d file %s line %d\n",
-    mem, size, file, line ));
-  if (mem==0) err(( "malik: Out of memory allocating %d\n", size ));
+  if (verbose) {
+    spew(( "malik %x size %d file %s line %d\n", mem, size, file, line ));
+  }
+
+  if (mem==0) {
+    err(( "malik: Out of memory allocating %d\n", size ));
+  }
+
+  // Track min/max
+  if (mem < mem_min_addr) {
+    mem_min_addr = mem;
+  }
+  if (mem+size-1 > mem_max_addr) {
+    mem_max_addr = mem+size-1;
+  }
 
   return mem;
 }
@@ -64,17 +61,23 @@ void *realik_actual( char *file, int line, void *mem, int size )
 
   rmem = realik_last( mem, size );
 
-  spew(( smem, "realik %x size %d was %x file %s line %d\n",
-    rmem, size, mem, file, line ));
-  if (rmem==0) err(( "realik: Out of memory allocating %d\n", size ));
+  if (verbose) {
+    spew(( "realik %x size %d was %x file %s line %d\n",
+           rmem, size, mem, file, line ));
+  }
+
+  if (rmem==0) {
+    err(( "realik: Out of memory allocating %d\n", size ));
+  }
 
   return rmem;
 }
 
 void fri_actual( char *file, int line, void *mem )
 {
-  spew(( smem, "fri %x file %s line %d\n",
-    mem, file, line ));
+  if (verbose) {
+    spew(( "fri %x file %s line %d\n", mem, file, line ));
+  }
 
   fri_last( mem );
 }
@@ -96,10 +99,13 @@ void *memfill( void *dest, int c, int n )
 
 char *strdoop( char *s )
 {
-  char *ss = (char*)malik( strlen( s ) );
+  char *ss = (char*)malik( strlen( s )+1 );
   strcpy( ss, s );
 
-  spew(( smem, "strdup 0x%x <- 0x%x\n", ss, s ));
+  if (verbose) {
+    spew(( "strdup 0x%x <- 0x%x\n", ss, s ));
+  }
+
   return ss;
 }
 

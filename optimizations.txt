@@ -1,0 +1,33 @@
+start.
+
+real	0m0.457s
+user	0m0.400s
+sys	0m0.060s
+
+real	0m0.453s
+user	0m0.360s
+sys	0m0.080s
+
+real	0m0.456s
+user	0m0.340s
+sys	0m0.110s
+
+real	0m0.452s
+user	0m0.310s
+sys	0m0.150s
+
+real	0m0.458s
+user	0m0.380s
+sys	0m0.080s
+
+real	0m0.452s
+user	0m0.390s
+sys	0m0.040s
+
+real	0m0.453s
+user	0m0.360s
+sys	0m0.100s
+
+real	0m0.455s
+user	0m0.370s
+sys	0m0.080s

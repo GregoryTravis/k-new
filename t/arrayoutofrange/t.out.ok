@@ -1,0 +1,4 @@
+{ 0, 1, 2 }
+Assertion failure:
+At t/arrayoutofrange/t.c:16:
+Error: Array index 12 out of range 0..3

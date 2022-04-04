@@ -1,0 +1,74 @@
+block_statement(
+  [
+    exp_statement(
+      lambda(
+        [x, y],
+        block_statement( [exp_statement( (=)( x, y ) )] )
+      )
+    ),
+    exp_statement(
+      (+)(
+        (+)(
+          (+)(
+            (+)(
+              (+)( (+)( (+)( (+)( (+)( 69, 13 ), 27 ), 28 ), 'a' ), '\t' ),
+              '\x00'
+            ),
+            '4'
+          ),
+          '\"'
+        ),
+        '('
+      )
+    ),
+    exp_statement( (=)( a, 4 ) ),
+    exp_statement( (=)( b, 10 ) ),
+    exp_statement( (=)( jer, (+)( blah, ted ) ) ),
+    block_statement( [exp_statement( (=)( t, clone( vote ) ) )] ),
+    exp_statement(
+      (=)(
+        big,
+        p(
+          [2.700000, 3, 4],
+          {},
+          [[]],
+          ( 3, 4, [q] ),
+          { (=>)( a, 3 ), (=>)( 4, b ), (=>)( [v, v], [q] ) },
+          (=)( a, b ),
+          a(
+            b( c ),
+            per( clone, vote ),
+            (+)(
+              (*)( a, b ),
+              (*)( c, (*|*)( (+)( (+)( d, e ), f ), g ) )
+            )
+          ),
+          a(
+            b( c ),
+            per( clone, vote ),
+            (+)(
+              (*)( a, b ),
+              (*)( c, (*|*)( (+)( (+)( d, e ), f ), g ) )
+            )
+          ),
+          a(
+            b( c ),
+            per( clone, vote ),
+            (+)(
+              (*)( a, b ),
+              (*)( c, (*|*)( (+)( (+)( d, e ), f ), g ) )
+            )
+          ),
+          a(
+            b( c ),
+            per( clone, vote ),
+            (+)(
+              (*)( a, b ),
+              (*)( c, (*|*)( (+)( (+)( d, e ), f ), g ) )
+            )
+          )
+        )
+      )
+    )
+  ]
+)

@@ -1,0 +1,79 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+use Lang::Extensions;
+use DataStructures;
+use File;
+use Shew;
+use Util;
+
+sub cmd( $ )
+{
+  my ($cmd) = @_;
+  #print "$cmd\n";
+  return system( $cmd );
+}
+
+#sub same( $$ )
+#{
+#  my ($f0,$f1) = @_;
+#  my $temp = "tmp" . time();
+#  my $ret = cmd( "diff $f0 $f1 > $temp" );
+#  my $same = ($ret==0) && (-z $temp);
+#  unlink( $temp );
+#  return $same;
+#}
+
+#my $bindings_gen = Util::load_bindings( "gen.mk" );
+#my $objs = $bindings_gen->{OBJS};
+my $bindings = Util::load_bindings( "makefile" );
+my $cflags = $bindings->{CCFLAGS};
+
+# Things that aren't really tests, like CVS
+my %ignores;
+if (-e "t/ignore") {
+  open( IGNORE, "t/ignore" );
+  while (<IGNORE>) {
+    chomp;
+    $ignores{"t/$_"} = 1;
+  }
+  close( IGNORE );
+}
+
+my @dirs;
+
+if (@ARGV) {
+  @dirs = map { "t/$_" } @ARGV;
+} else {
+  @dirs = <t/*>;
+}
+
+my $skips = (-e "t/skip") ?
+    m2s( [map { "t/$_" } @{File::readFileLines( "t/skip" )}] )
+    : {};
+
+foreach my $dir (@dirs)
+{
+  next if ($ignores{$dir});
+  next if (!-d $dir);
+  next if ($skips->{$dir});
+
+  print "$dir" . ('.' x (40-length($dir)));
+
+  cmd( "depbuild -s $dir/t" );
+
+  cmd( "$dir/t >& $dir/t.out" );
+  my $dr = cmd( "diff $dir/t.out.ok $dir/t.out > $dir/t.diff" );
+  my $ok = $dr==0 && -z "$dir/t.diff";
+
+  print $ok ? "OK\n" : "FAILED\n";
+
+  my @remfiles = ("$dir/t", "$dir/t.o", "$dir/mk.out",
+                  "$dir/t.out", "$dir/t.diff");
+  if ($ok) {
+    foreach my $file (@remfiles) {
+      unlink( $file ) if (-e $file);
+    }
+  }
+}

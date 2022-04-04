@@ -1,0 +1,4 @@
+[1, 2, 3]
+Term( As, [['a'], ['a', As]] )
+Term( As, [['a'], ['a', As]] )
+EQUAL 1

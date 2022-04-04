@@ -1,0 +1,14 @@
+#!/usr/bin/perl
+
+if (@ARGV) {
+  @dirs = map { "t/$_" } @ARGV;
+} else {
+  @dirs = <t/*>
+}
+
+foreach $dir (@dirs) {
+  if (-e "$dir/t.diff") {
+    print "Setting $dir\n";
+    system( "mv $dir/t.out $dir/t.out.ok" );
+  }
+}
