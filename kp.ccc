@@ -1,0 +1,146 @@
+# $Id: kp.ccc,v 1.25 2002/10/11 20:55:20 Administrator Exp $
+
+# Hey there
+
+lex boolconst atom (true|false)
+lex nil atom (nil)
+lex identifier atom ([a-zA-Z_])([a-zA-Z_0-9])*
+lex integer atom ([0-9]+)
+lex equals atom [=]
+#lex level00 atom \.
+#lex level01 atom ! -[unary] ++ +[unary] *[unary] &[unary?]
+lex level02 atom [*/%]
+lex level03 atom [+-]
+#lex level04 atom <<|>>
+lex level05 atom <|<=|>|>=
+lex level06 atom ==|!=
+lex level07 atom [&]
+lex level08 atom [\^]
+lex level09 atom \|
+lex level10 atom &&
+lex level11 atom \|\|
+#lex level12 atom ?:
+#lex level13 atom =  +=  -=  *=  /=  %=  &=  ^=  |=  <<= >>=
+#lex level14 atom
+lex genop atom [~!@#$%^&*=+|<>?/-]+
+lex quotetick atom \'
+#lex atomname atom [^(); \t\n]+
+
+lex string string \"[^\"]*\"
+lexignore \/\/.*
+
+precedence right equals
+#precedence left level14
+#precedence right level13
+#precedence left level12
+precedence left level11
+precedence left level10
+precedence left level09
+precedence left level08
+precedence left level07
+precedence left level06
+precedence left level05
+#precedence left level04
+precedence left genop
+precedence left level03
+precedence left level02
+#precedence right level01
+#precedence left level00
+
+# top-level
+parse top program
+parse program statement_list
+
+# statements and blocks
+parse block -"{" statement* -"}"
+parse statement_list statement*
+parse statement:expressionstatement expression -";"
+parse statement:returnargs "return" expression -";"
+parse statement:returnnoargs "return" -";"
+parse statement:if if
+parse statement:block block
+parse statement:decls "var" decllist -";"
+parse statement:function function
+parse statement:export export
+parse statement:label identifier -":"
+parse statement:goto -"goto" identifier -";"
+parse decllist adecl/","*
+parse adecl identifier -equals expression
+parse statement:while while
+parse statement:for for
+parse statement:do do
+parse statement:class class
+
+# if stuff
+parse if:if "if" -"(" expression -")" block
+parse if:ifelse "if" -"(" expression -")" block "else" elsepart
+parse elsepart:block block
+parse elsepart:if if
+
+# Looping
+parse while:while -"while" -"(" expression -")" block
+parse for:for -"for" -"(" expression -";" expression -";" expression -")" block
+parse for:forwithdecl -"for" -"(" fordecls -";" expression -";" expression -")" block
+parse fordecls -"var" decllist
+parse do:do -"do" block -"while" -"(" expression -")" -";"
+
+# expressions
+parse expression:variable variable
+parse expression:assignment expression -equals expression
+parse expression:opexpr opexpr
+parse expression:paren -"(" expression -")"
+parse expression:lambda lambda
+#parse expression:function function
+parse expression:show "show" expression
+parse expression:yield "yield" expression
+#parse expression:if if
+parse expression:integer integer
+parse expression:boolconst boolconst
+parse expression:nil nil
+parse expression:string string
+parse expression:block block
+parse expression:callcc callcc
+parse expression:funcall expression paramlist
+parse expression:quoteatom -quotetick identifier
+parse expression:objectaccess objectaccess
+
+# op expressions
+parse opexpr:level02 expression level02 expression *level02
+parse opexpr:level03 expression level03 expression *level03
+parse opexpr:level05 expression level05 expression *level05
+parse opexpr:level06 expression level06 expression *level06
+parse opexpr:level07 expression level07 expression *level07
+parse opexpr:level08 expression level08 expression *level08
+parse opexpr:level09 expression level09 expression *level09
+parse opexpr:level10 expression level10 expression *level10
+parse opexpr:level11 expression level11 expression *level11
+parse opexpr:genop expression genop expression *genop
+
+# imports
+parse statement:import -"import" importspec -";"
+parse importspec identifier
+parse statement:include -"include" string -";"
+
+# exports
+parse export:decls -"export" -"var" decllist -";"
+parse export:fun -"export" function
+
+parse variable identifier
+
+# call/cc
+parse callcc -"callcc" expression
+
+# functions
+parse arglist -"(" identifier/","* -")"
+parse lambda "lambda" arglist block
+parse function "fun" identifier arglist block
+parse paramlist -"(" expression/","* -")"
+
+# objects
+parse class -"class" identifier -"{" class_statement_list -"}"
+parse class_statement_list class_statement*
+parse class_statement:modified class_access_modifier statement
+parse class_statement:unmodified statement
+parse class_access_modifier:public "public"
+parse objectaccess identifier -"." identifier
+parse expression:new -"new" identifier
